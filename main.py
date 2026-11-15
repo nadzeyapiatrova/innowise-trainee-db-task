@@ -1,63 +1,100 @@
 import argparse
 import json
-from db import DatabaseManager
+import os
+from dotenv import load_dotenv  # pip install python-dotenv
+
+from db import DatabaseManager, SchemaInitializer, RoomRepository, StudentRepository
 from queries import QUERIES
-from exporters import ExporterFactory
+from exporters import ExporterFactory, BaseExporter
 
-# PostgreSQL connection parameters in Docker
-DB_CONFIG = {
-    "dbname": "postgre",
-    "user": "admin",
-    "password": "admin123",
-    "host": "localhost",
-    "port": "5432"
-}
+load_dotenv()
 
+class JsonLoader:
+    """Responsible for reading and parsing JSON files."""
 
-def load_json(filepath):
-    """Function for reading a JSON file."""
-    with open(filepath, "r", encoding="utf-8") as f:
-        return json.load(f)
+    def load(self, filepath):
+        with open(filepath, "r", encoding="utf-8") as f:
+            return json.load(f)
 
 
-def main():
-    # 1. Configuring command-line parameters (argparse)
+class AnalyticsPipeline:
+    """Orchestrates data loading, database persistence, and report exporting."""
+
+    def __init__(
+        self,
+        db_manager: DatabaseManager,
+        schema_initializer: SchemaInitializer,
+        room_repo: RoomRepository,
+        student_repo: StudentRepository,
+        loader: JsonLoader,
+        exporter: BaseExporter,
+        queries: dict,
+    ):
+        self.db = db_manager
+        self.schema = schema_initializer
+        self.room_repo = room_repo
+        self.student_repo = student_repo
+        self.loader = loader
+        self.exporter = exporter
+        self.queries = queries
+
+    def run(self, rooms_path: str, students_path: str, output_format: str):
+        print("1. Reading source files...")
+        rooms_data = self.loader.load(rooms_path)
+        students_data = self.loader.load(students_path)
+
+        print("2. Preparing database and loading data...")
+        self.schema.init_schema()
+        self.room_repo.bulk_insert(rooms_data)
+        self.student_repo.bulk_insert(students_data)
+        print("Data successfully saved to the database!")
+
+        print(f"\n3. Executing queries and saving in .{output_format}:")
+        for query_name, sql in self.queries.items():
+            rows = self.db.fetch_all(sql)
+            filename = f"{query_name}.{output_format}"
+            self.exporter.export(rows, filename)
+
+        print("\nAll files have been successfully created!")
+
+
+def get_db_config():
+    return {
+        "dbname": os.getenv("DB_NAME", "postgre"),
+        "user": os.getenv("DB_USER", "admin"),
+        "password": os.getenv("DB_PASSWORD", "admin123"),
+        "host": os.getenv("DB_HOST", "localhost"),
+        "port": os.getenv("DB_PORT", "5432"),
+    }
+
+
+def parse_args():
     parser = argparse.ArgumentParser(description="Data import and analytics export.")
     parser.add_argument("-s", "--students", required=True, help="Path to the file containing students.")
     parser.add_argument("-r", "--rooms", required=True, help="Path to the file containing rooms.")
     parser.add_argument("-f", "--format", required=True, choices=["json", "xml"], help="Export format: json or xml")
-    
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    # 2. Reading files passed via the terminal
-    print("1. Reading source files...")
-    rooms_data = load_json(args.rooms)
-    students_data = load_json(args.students)
 
-    # 3. Connecting to the database and loading data
-    db = DatabaseManager(DB_CONFIG)
-    db.connect()
+def main():
+    args = parse_args()
+    db_config = get_db_config()
 
-    try:
-        print("2. Loading data into a database...")
-        db.insert_rooms(rooms_data)
-        db.insert_students(students_data)
-        print("Data successfully saved to the database!")
-
-        # 4. The required exporter (json or xml)
-        exporter = ExporterFactory.get_exporter(args.format)
-
-        # 5. Executing 4 analytical queries and save the results
-        print(f"\n3. Executing queries and saving in .{args.format}:")
-        for query_name, sql in QUERIES.items():
-            rows = db.execute_query(sql)
-            filename = f"{query_name}.{args.format}"
-            exporter.export(rows, filename)
-
-        print("\nAll 4 files have been successfully created!")
-
-    finally:
-        db.close()
+    with DatabaseManager(db_config) as db_manager:
+        pipeline = AnalyticsPipeline(
+            db_manager=db_manager,
+            schema_initializer=SchemaInitializer(db_manager),
+            room_repo=RoomRepository(db_manager),
+            student_repo=StudentRepository(db_manager),
+            loader=JsonLoader(),
+            exporter=ExporterFactory.get_exporter(args.format),
+            queries=QUERIES,
+        )
+        pipeline.run(
+            rooms_path=args.rooms,
+            students_path=args.students,
+            output_format=args.format,
+        )
 
 
 if __name__ == "__main__":

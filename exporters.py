@@ -1,8 +1,16 @@
 import json
 import xml.etree.ElementTree as ET
+from abc import ABC, abstractmethod
 
 
-class JsonExporter:
+class BaseExporter(ABC):
+    """Abstract base class defining the contract for all exporters."""
+
+    @abstractmethod
+    def export(self, data, filepath):
+        pass
+
+class JsonExporter(BaseExporter):
     """A class for saving to JSON."""
 
     def export(self, data, filepath):
@@ -12,7 +20,7 @@ class JsonExporter:
         print(f"File saved: {filepath}")
 
 
-class XmlExporter:
+class XmlExporter(BaseExporter):
     """A class for saving to XML."""
 
     def export(self, data, filepath):
@@ -33,15 +41,17 @@ class XmlExporter:
 
 
 class ExporterFactory:
-    """Simple factory: returns the appropriate class based on the format name."""
+    """Factory returning the appropriate exporter based on format name."""
+
+    _exporters = {
+        "json": JsonExporter,
+        "xml": XmlExporter,
+    }
 
     @classmethod
     def get_exporter(cls, format_type):
-        format_type = format_type.lower()
-        if format_type == "json":
-            return JsonExporter()
-        elif format_type == "xml":
-            return XmlExporter()
-        else:
+        exporter_class = cls._exporters.get(format_type.lower())
+        if not exporter_class:
             raise ValueError(f"Unknown format: {format_type}")
+        return exporter_class()
         

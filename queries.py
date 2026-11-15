@@ -12,7 +12,7 @@ QUERIES = {
     "2_top5_youngest_rooms": """
         SELECT 
             r.name,
-            ROUND(AVG(EXTRACT(YEAR FROM AGE(CURRENT_DATE, s.birthday)))::numeric, 1) AS students_avg_age
+            ROUND(AVG((CURRENT_DATE - s.birthday) / 365.25)::numeric, 1) AS students_avg_age
         FROM rooms r 
         JOIN students s ON s.room = r.id 
         GROUP BY r.name
@@ -23,7 +23,7 @@ QUERIES = {
     "3_top5_biggest_age_diff": """
         SELECT 
             r.name,
-            EXTRACT(YEAR FROM AGE(MAX(s.birthday), MIN(s.birthday))) AS students_diff_age
+            (MAX(s.birthday) - MIN(s.birthday)) AS students_diff_age
         FROM rooms r 
         JOIN students s ON s.room = r.id 
         GROUP BY r.name
