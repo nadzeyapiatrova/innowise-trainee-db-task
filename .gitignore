@@ -1,0 +1,11 @@
+.venv/
+.env
+__pycache__/
+*.pyc
+
+*.json
+*.xml
+!rooms.json
+!students.json
+
+.DS_Store

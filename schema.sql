@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS rooms (
+    id INT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS students (
+    id INT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    birthday DATE NOT NULL,
+    sex CHAR(1) NOT NULL,
+    room INT REFERENCES rooms(id)
+);
