@@ -15,7 +15,7 @@ QUERIES = {
             ROUND(AVG((CURRENT_DATE - s.birthday) / 365.25)::numeric, 1) AS students_avg_age
         FROM rooms r 
         JOIN students s ON s.room = r.id 
-        GROUP BY r.name
+        GROUP BY r.id, r.name
         ORDER BY students_avg_age
         LIMIT 5;
     """,
@@ -26,7 +26,7 @@ QUERIES = {
             (MAX(s.birthday) - MIN(s.birthday)) AS students_diff_age
         FROM rooms r 
         JOIN students s ON s.room = r.id 
-        GROUP BY r.name
+        GROUP BY r.id, r.name
         ORDER BY students_diff_age DESC
         LIMIT 5;
     """,
@@ -36,7 +36,7 @@ QUERIES = {
             r.name
         FROM rooms r 
         JOIN students s ON s.room = r.id 
-        GROUP BY r.name
+        GROUP BY r.id, r.name
         HAVING COUNT(DISTINCT s.sex) > 1;
     """
 }
