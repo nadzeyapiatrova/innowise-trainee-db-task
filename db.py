@@ -50,14 +50,19 @@ class DatabaseManager:
 class SchemaInitializer:
     """Responsible for creating database tables if they do not exist."""
 
-    def __init__(self, db_manager: DatabaseManager, schema_path: str = "schema.sql"):
+    def __init__(self, db_manager: DatabaseManager, schema_path: str = "schema.sql", indexes_path: str = "indexes.sql"):
         self.db = db_manager
         self.schema_path = schema_path
+        self.indexes_path = indexes_path
 
     def init_schema(self):
         with open(self.schema_path, "r", encoding="utf-8") as f:
             ddl = f.read()
         self.db.execute_ddl(ddl)
+
+    def init_indexes(self):
+        with open(self.indexes_path, "r", encoding="utf-8") as f:
+            self.db.execute_ddl(f.read())
 
 
 class RoomRepository:

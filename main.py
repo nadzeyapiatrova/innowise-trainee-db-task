@@ -47,6 +47,7 @@ class AnalyticsPipeline:
         self.schema.init_schema()
         self.room_repo.bulk_insert(rooms_data)
         self.student_repo.bulk_insert(students_data)
+        self.schema.init_indexes()
         print("Data successfully saved to the database!")
 
         print(f"\n3. Executing queries and saving in .{output_format}:")
